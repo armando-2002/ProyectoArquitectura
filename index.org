@@ -1,0 +1,464 @@
+#+options: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline
+#+options: author:t broken-links:nil c:nil creator:nil
+#+options: d:(not "LOGBOOK") date:t e:t email:nil expand-links:t f:t
+#+options: inline:t num:t p:nil pri:nil prop:nil stat:t tags:t
+#+options: tasks:t tex:t timestamp:t title:t toc:t todo:t |:t
+#+title: Proyecto ICCD32 Arquitectura de Computadores
+#+date: 2025-02-07
+#+author: Joel Tinitana, Armando Sarango.
+#+email: joel.tinitana@epn.edu.ec , armando.sarango@epn.edu.ec 
+#+language: es
+#+select_tags: export
+#+exclude_tags: noexport
+#+creator: Emacs 27.1 (Org mode 9.7.5)
+#+cite_export:
+
+* City Weather APP
+Este es el proyecto de fin de semestre en donde se pretende demostrar
+las destrezas obtenidas durante el transcurso de la asignatura de
+**Arquitectura de Computadores**.
+
+1. Conocimientos de sistema operativo Linux  
+2. Conocimientos de Emacs/Jupyter  
+3. Configuración de Entorno para Data Science con Mamba/Anaconda  
+4. Literate Programming
+
+** Estructura del proyecto
+Se recomienda que el proyecto se cree en el /home/ del sistema
+operativo i.e. /home/<user>/. Allí se creará la carpeta /CityWeather/
+#+begin_src shell :results output :exports both
+#cd ..
+#cd ..
+pwd
+#+end_src
+
+#+RESULTS:
+: /home/joel/CityWeather/weather-site/content
+
+#+begin_src shell :results output :exports results
+cd ..
+cd ..
+tree
+#+end_src
+
+#+RESULTS:
+#+begin_example
+.
+├── clima-bogota-hoy.csv
+├── get-weather.sh
+├── get-weather.sh:Zone.Identifier
+├── main.py
+├── main.py:Zone.Identifier
+├── output.log
+└── weather-site
+    ├── build-site.el
+    ├── build-site.el:Zone.Identifier
+    ├── build.sh
+    ├── build.sh:Zone.Identifier
+    ├── content
+    │   ├── #index.org#
+    │   ├── images
+    │   │   ├── humedad_vs_tiempo.png
+    │   │   └── temperature.png
+    │   ├── index.org
+    │   ├── index.org:Zone.Identifier
+    │   └── index.org~
+    └── public
+        ├── images
+        │   ├── humedad_vs_tiempo.png
+        │   └── temperature.png
+        └── index.html
+
+6 directories, 19 files
+#+end_example
+
+#+begin_src shell :results output :exports both
+mkdir /home/joel/CityWeather
+cd /home/joel/CityWeather
+pwd
+#+end_src
+
+#+RESULTS:
+: /home/joel/CityWeather
+
+#+begin_src shell :results output :exports results
+cd /home/joel
+mkdir -p CityWeather/weather-site
+cd CityWeather
+pwd
+#+end_src
+
+#+RESULTS:
+: /home/joel/CityWeather
+
+#+begin_src shell :results output :exports both
+  cd /home/joel
+  mkdir -p CityWeather/weather-site/content
+  cd CityWeather
+pwd
+#+end_src
+#+RESULTS:
+: /home/joel/CityWeather
+
+#+begin_src shell :results output :exports both
+    cd /home/joel
+    mkdir -p CityWeather/weather-site/public
+    cd CityWeather
+  pwd
+  
+#+end_src
+#+RESULTS:
+: /home/joel/CityWeather
+
+#+begin_src shell :results output :exports both
+cd /home/joel
+mkdir -p CityWeather/weather-site/content/images
+cd CityWeather
+#+end_src
+#+RESULTS:
+
+#+begin_src shell :results output :exports both
+cd /home/joel
+mkdir -p CityWeather/weather-site/public/images
+cd CityWeather
+#+end_src
+#+RESULTS:
+
+** Descripción del código
+
+*** Código Python
+
+** 1. Configuración de Constantes
+
+#+begin_src python
+# Coordenadas de Bogotá
+BOGOTA_LAT = 4.7110         # Latitud de Bogotá
+BOGOTA_LONGITUDE = -74.0721   # Longitud de Bogotá
+API_KEY = "70486714f925b9203d1f4018c9be6476"
+FILE_NAME = "/home/joel/CityWeather/clima-bogota-hoy.csv"
+#+end_src
+
+#+RESULTS:
+: None
+
+Define las constantes necesarias para la solicitud a la API, incluyendo las coordenadas de la ciudad, la clave API y el nombre del archivo CSV donde se guardarán los datos.
+
+** 2. Función get_weather
+
+#+begin_src python
+def get_weather(lat, lon, api):
+    url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api}&units=metric"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return {"cod": response.status_code}
+#+end_src
+
+#+RESULTS:
+: None
+
+Construye la URL para la solicitud a la API y realiza una solicitud GET. Devuelve la respuesta en formato JSON si la solicitud es exitosa, o un diccionario con el código de error si la solicitud falla.
+
+** 3. Función process
+
+#+begin_src python
+def process(json):
+    normalized_dict = {
+        "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "Temperatura": json["main"]["temp"],
+        "Humedad": json["main"]["humidity"],
+        "Presión": json["main"]["pressure"],
+        "Velocidad del viento": json["wind"]["speed"],
+        "dt": json.get("dt", "N/A"),
+        "coord_lon": json["coord"].get("lon", "N/A"),
+        "coord_lat": json["coord"].get("lat", "N/A"),
+        "weather_0_id": json["weather"][0].get("id", "N/A"),
+        "weather_0_main": json["weather"][0].get("main", "N/A"),
+        "weather_0_description": json["weather"][0].get("description", "N/A"),
+        "weather_0_icon": json["weather"][0].get("icon", "N/A"),
+        "base": json.get("base", "N/A"),
+        "main_temp": json["main"].get("temp", "N/A"),
+        "main_feels_like": json["main"].get("feels_like", "N/A"),
+        "visibility": json.get("visibility", "N/A"),
+        "wind_speed": json["wind"].get("speed", "N/A"),
+        "wind_deg": json["wind"].get("deg", "N/A"),
+        "clouds_all": json.get("clouds", {}).get("all", "N/A"),
+        "sys_type": json.get("sys", {}).get("type", "N/A"),
+        "sys_id": json.get("sys", {}).get("id", "N/A"),
+        "sys_country": json.get("sys", {}).get("country", "N/A"),
+        "sys_sunrise": json.get("sys", {}).get("sunrise", "N/A"),
+        "sys_sunset": json.get("sys", {}).get("sunset", "N/A"),
+        "timezone": json.get("timezone", "N/A"),
+        "id": json.get("id", "N/A"),
+        "name": json.get("name", "N/A"),
+        "cod": json.get("cod", "N/A"),
+    }
+    return normalized_dict
+#+end_src
+
+#+RESULTS:
+: None
+
+Normaliza los datos JSON obtenidos de la API en un diccionario con campos estándar para ser guardados en el archivo CSV. Incluye la fecha y hora actuales y maneja posibles valores ausentes.
+
+** 4. Función write2csv
+
+#+begin_src python
+def write2csv(json_response, csv_filename):
+    fieldnames = [
+        "Fecha", "Temperatura", "Humedad", "Presión", "Velocidad del viento",
+        "dt", "coord_lon", "coord_lat", "weather_0_id", "weather_0_main",
+        "weather_0_description", "weather_0_icon", "base", "main_temp",
+        "main_feels_like", "visibility", "wind_speed", "wind_deg",
+        "clouds_all", "sys_type", "sys_id", "sys_country", "sys_sunrise",
+        "sys_sunset", "timezone", "id", "name", "cod"
+    ]
+#+end_src
+
+#+RESULTS:
+: None
+
+** 5. Función main
+
+#+begin_src python
+def main():
+    print("===== Bienvenido a Bogotá-Clima =====")
+    bogota_weather = get_weather(lat=BOGOTA_LAT, lon=BOGOTA_LONGITUDE, api=API_KEY)
+    
+    if bogota_weather['cod'] != 404:
+        processed_weather = process(bogota_weather)
+        write2csv(processed_weather, FILE_NAME)
+        print("Datos climatológicos guardados correctamente en", FILE_NAME)
+    else:
+        print("Ciudad no disponible o API KEY no válida")
+
+if __name__ == '__main__':
+    main()
+#+end_src
+
+#+RESULTS:
+
+Es el punto de entrada del script. Imprime un mensaje de bienvenida, obtiene los datos meteorológicos, los procesa y los guarda en el archivo CSV. Maneja errores en caso de que la ciudad no esté disponible o la clave de API sea inválida.
+
+** Script ejecutable sh
+
+#+begin_src shell :results output :exports both
+which sh
+#+end_src
+
+#+RESULTS:
+: /usr/bin/sh
+
+#+begin_src shell :results output :exports both
+which mamba
+#+end_src
+
+#+RESULTS:
+: /home/joel/mambaforge/condabin/mamba
+
+#+begin_src shell :results output :exports both
+touch ~/CityWeather/get-weather.sh
+ls -l ~/CityWeather/get-weather.sh  # Verifica que se haya creado
+#+end_src
+
+#+RESULTS:
+: -rwxr-xr-x 1 joel joel 156 Feb 10 15:08 /home/joel/CityWeather/get-weather.sh
+
+#+begin_src shell :results output :exports both
+echo '#!/usr/bin/sh' > ~/CityWeather/get-weather.sh
+echo 'source /home/joel/miniforge3/etc/profile.d/conda.sh' >> ~/CityWeather/get-weather.sh
+echo 'eval "$(conda shell.bash hook)"' >> ~/CityWeather/get-weather.sh
+echo 'conda activate joel' >> ~/CityWeather/get-weather.sh
+echo 'python /home/joel/CityWeather/main.py' >> ~/CityWeather/get-weather.sh
+cat ~/CityWeather/get-weather.sh  # Muestra el contenido
+#+end_src
+
+#+RESULTS:
+: #!/usr/bin/sh
+: source /home/joel/miniforge3/etc/profile.d/conda.sh
+: eval "$(conda shell.bash hook)"
+: conda activate joel
+: python /home/joel/CityWeather/main.py
+
+#+begin_src shell :results output :exports both
+chmod +x ~/CityWeather/get-weather.sh
+ls -l ~/CityWeather/get-weather.sh  # Verifica los permisos
+#+end_src
+
+#+RESULTS:
+: -rwxr-xr-x 1 joel joel 156 Feb 10 15:08 /home/joel/CityWeather/get-weather.sh
+
+#+begin_src shell :results output :exports both
+~/CityWeather/get-weather.sh
+#+end_src
+
+#+RESULTS:
+: ===== Bienvenido a Bogotá-Clima =====
+: Datos climatológicos guardados correctamente en /home/joel/CityWeather/clima-bogota-hoy.csv
+
+#+begin_src shell :results output :exports both
+chmod +x /home/joel/CityWeather/get-weather.sh
+#+end_src
+
+#+RESULTS:
+
+#+begin_src shell :results output :exports both
+ls -l /home/joel/CityWeather/get-weather.sh # para verificar
+#+end_src
+
+#+RESULTS:
+: -rwxr-xr-x 1 joel joel 156 Feb 10 15:08 /home/joel/CityWeather/get-weather.sh
+
+** Configuración de Crontab
+Se indica la configuración realizada en crontab para la adquisición de datos
+
+#+begin_src shell
+*/15 * * * * /usr/bin/python3 /home/joel/CityWeather/main.py >> /home/joel/CityWeather/output.log 2>&1
+#+end_src
+
+#+RESULTS:
+
+- Recuerde reemplazar <City> por el nombre de la ciudad que se analice (en este caso, Bogotá).  
+- Ajuste el intervalo de tiempo según sea necesario.  
+- La redirección `2>&1` guarda tanto la salida estándar como los errores en el archivo `output.log`.
+
+* Presentación de resultados  
+Para la presentación de resultados se utilizan las librerías de Python:
+- matplotlib  
+- pandas  
+
+Alternativamente, como se puede ver en el Jupyter Notebook  
+[[https://github.com/LeninGF/EPN-Lectures/blob/main/iccd332ArqComp-2024-A/Proyectos/CityWeather/CityTemperatureAnalysis.ipynb][CityTemperatureAnalysis.ipynb]],  
+existen librerías alternativas para presentar los resultados gráficos. Recuerde instalar los paquetes necesarios usando `mamba install <nombre-paquete>`.
+
+** Muestra Aleatoria de datos
+
+Presentar una muestra de 10 valores aleatorios de los datos obtenidos.
+
+#+caption: Lectura de archivo csv
+#+begin_src python :session :results output exports both
+import os
+import pandas as pd
+# Lectura del archivo CSV obtenido
+df = pd.read_csv('/home/joel/CityWeather/clima-bogota-hoy.csv')
+# Se imprime la estructura del DataFrame (filas x columnas)
+print(df.shape)
+#+end_src
+
+#+RESULTS:
+: (18, 28)
+
+Resultado del número de filas y columnas leídos del archivo CSV.
+
+** TABLA
+#+begin_src python :session :results value table
+import pandas as pd
+df = pd.read_csv('/home/joel/CityWeather/clima-bogota-hoy.csv')
+
+# Convertir la columna Fecha a datetime
+df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+# Ordenar por la fecha más reciente
+df = df.sort_values("Fecha", ascending=False)
+# Seleccionar las últimas 10 filas
+table1 = df.head(10)
+# Convertir todas las columnas a cadenas para evitar problemas de alineación
+table1 = table1.astype(str)
+# Crear la tabla como una lista de listas
+table = [list(table1.columns)] + table1.values.tolist()
+table  # Esta línea devuelve la variable 'table'
+#+end_src
+
+#+RESULTS:
+| Fecha               | Temperatura | Humedad | Presión | Velocidad del viento |         dt | coord_lon | coord_lat | weather_0_id | weather_0_main | weather_0_description | weather_0_icon | base     | main_temp | main_feels_like | visibility | wind_speed | wind_deg | clouds_all | sys_type |  sys_id | sys_country | sys_sunrise | sys_sunset | timezone |      id | name                  | cod |
+| 2025-02-10 15:08:16 |       18.96 |      68 |    1010 |                 6.71 | 1739218096 |  -74.0721 |     4.711 |          500 | Rain           | light rain            |            10d | stations |     18.96 |           18.69 |       8000 |       6.71 |      280 |         75 |        2 | 2099265 | CO          |  1739185917 | 1739228955 |   -18000 | 7033249 | Santa Barbara Central | 200 |
+| 2025-02-10 14:55:48 |       18.96 |      68 |    1010 |                 6.26 | 1739217309 |  -74.0721 |     4.711 |          802 | Clouds         | scattered clouds      |            03d | stations |     18.96 |           18.69 |       6000 |       6.26 |      280 |         40 |        2 | 2099265 | CO          |  1739185917 | 1739228955 |   -18000 | 7033249 | Santa Barbara Central | 200 |
+| 2025-02-10 14:55:09 |       18.96 |      68 |    1010 |                 6.26 | 1739217309 |  -74.0721 |     4.711 |          802 | Clouds         | scattered clouds      |            03d | stations |     18.96 |           18.69 |       6000 |       6.26 |      280 |         40 |        2 | 2099265 | CO          |  1739185917 | 1739228955 |   -18000 | 7033249 | Santa Barbara Central | 200 |
+| 2025-02-10 14:52:51 |       18.99 |      68 |    1010 |                 6.26 | 1739216635 |   -74.069 |     4.705 |          802 | Clouds         | scattered clouds      |            03d | stations |     18.99 |           18.72 |       6000 |       6.26 |      280 |         40 |        2 | 2099265 | CO          |  1739185916 | 1739228954 |   -18000 | 7033249 | Santa Barbara Central | 200 |
+| 2025-02-10 14:48:43 |       18.99 |      68 |    1010 |                 6.26 | 1739216635 |   -74.069 |     4.705 |          802 | Clouds         | scattered clouds      |            03d | stations |     18.99 |           18.72 |       6000 |       6.26 |      280 |         40 |        2 | 2099265 | CO          |  1739185916 | 1739228954 |   -18000 | 7033249 | Santa Barbara Central | 200 |
+| 2025-02-10 14:11:02 |        20.1 |      52 |    1011 |                 6.26 | 1739214536 |   -74.069 |     4.705 |          802 | Clouds         | scattered clouds      |            03d | stations |      20.1 |           19.52 |       6000 |       6.26 |      280 |         40 |        2 | 2099265 | CO          |  1739185916 | 1739228954 |   -18000 | 7033249 | Santa Barbara Central | 200 |
+| 2025-02-10 14:01:34 |        20.1 |      52 |    1011 |                 5.81 | 1739213935 |   -74.069 |     4.705 |          803 | Clouds         | broken clouds         |            04d | stations |      20.1 |           19.52 |       8000 |       5.81 |      260 |         75 |        2 | 2099265 | CO          |  1739185916 | 1739228954 |   -18000 | 7033249 | Santa Barbara Central | 200 |
+| 2025-02-10 14:00:58 |        20.1 |      52 |    1011 |                 5.81 | 1739213935 |   -74.069 |     4.705 |          803 | Clouds         | broken clouds         |            04d | stations |      20.1 |           19.52 |       8000 |       5.81 |      260 |         75 |        2 | 2099265 | CO          |  1739185916 | 1739228954 |   -18000 | 7033249 | Santa Barbara Central | 200 |
+| 2025-02-10 14:00:36 |        20.1 |      52 |    1011 |                 5.81 | 1739213935 |   -74.069 |     4.705 |          803 | Clouds         | broken clouds         |            04d | stations |      20.1 |           19.52 |       8000 |       5.81 |      260 |         75 |        2 | 2099265 | CO          |  1739185916 | 1739228954 |   -18000 | 7033249 | Santa Barbara Central | 200 |
+| 2025-02-10 13:59:40 |        20.1 |      52 |    1011 |                 5.81 | 1739213935 |   -74.069 |     4.705 |          803 | Clouds         | broken clouds         |            04d | stations |      20.1 |           19.52 |       8000 |       5.81 |      260 |         75 |        2 | 2099265 | CO          |  1739185916 | 1739228954 |   -18000 | 7033249 | Santa Barbara Central | 200 |
+
+** Gráfica Temperatura vs Tiempo
+
+Realizar una gráfica de la Temperatura en el tiempo.
+
+El siguiente código permite hacer la gráfica de la temperatura vs tiempo para Org 9.7+. Para saber la versión de Org Mode, ejecute `M-x org-version`.
+
+#+begin_src python :results file :exports both :session
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+# Convertir la columna dt a formato de fecha si es necesario
+df["dt"] = pd.to_datetime(df["dt"], unit="s", errors="coerce")
+# Crear la figura con un tamaño adecuado
+fig, ax = plt.subplots(figsize=(10, 6))
+# Graficar la temperatura vs tiempo con mejor estilo
+ax.plot(df["dt"], df["main_temp"], marker="o", linestyle="-", color="red", label="Temperatura")
+# Mejorar la visualización del eje X con fechas más legibles
+ax.xaxis.set_major_locator(mdates.HourLocator(interval=3))  # Mostrar cada 3 horas
+ax.xaxis.set_major_formatter(mdates.DateFormatter("%d-%m %H:%M"))  # Formato: Día-Mes Hora:Minutos
+plt.xticks(rotation=45, ha="right")  # Rotar etiquetas para evitar sobreposición
+plt.title("Gráfica Temperatura vs Tiempo en Bogotá", fontsize=14, fontweight="bold")
+plt.xlabel("Fecha y Hora (Hora Local de Bogotá)", fontsize=12)
+plt.ylabel("Temperatura (°C)", fontsize=12)
+plt.grid(True, linestyle="--", alpha=0.7)
+plt.legend()
+fig.tight_layout()
+fname = "/home/joel/CityWeather/weather-site/content/images/temperature.png"
+plt.savefig(fname, dpi=300)
+fname
+#+end_src
+
+#+RESULTS:
+[[file:/home/joel/CityWeather/weather-site/content/images/temperature.png]]
+
+#+caption: Gráfica Temperatura vs Tiempo
+
+** Gráfica de Humedad vs Tiempo
+
+#+begin_src python :results file :exports both :session
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+# Convertir la columna dt a formato de fecha si es necesario
+df["dt"] = pd.to_datetime(df["dt"], unit="s", errors="coerce")
+# Crear la figura con un tamaño adecuado
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.plot(df["dt"], df["Humedad"], marker="o", linestyle="-", color="blue", label="Humedad (%)")
+ax.xaxis.set_major_locator(mdates.HourLocator(interval=3))  # Mostrar cada 3 horas
+ax.xaxis.set_major_formatter(mdates.DateFormatter("%d-%m %H:%M"))  # Formato: Día-Mes Hora:Minutos
+plt.xticks(rotation=45, ha="right")  # Rotar etiquetas para evitar sobreposición
+plt.title("Gráfica Humedad vs Tiempo en Bogotá", fontsize=14, fontweight="bold")
+plt.xlabel("Fecha y Hora (Hora Local de Bogotá)", fontsize=12)
+plt.ylabel("Humedad (%)", fontsize=12)
+plt.grid(True, linestyle="--", alpha=0.7)
+plt.legend()
+fig.tight_layout()
+fname = "/home/joel/CityWeather/weather-site/content/images/humedad_vs_tiempo.png"
+plt.savefig(fname, dpi=300)
+fname
+#+end_src
+
+#+RESULTS:
+[[file:/home/joel/CityWeather/weather-site/content/images/humedad_vs_tiempo.png]]
+
+** Mover images a public
+
+Debido a que el archivo index.org se abre en la carpeta /content/ y el servidor web de Emacs se ejecuta desde la carpeta /public/, es necesario copiar las imágenes a public/images.
+
+#+begin_src shell :results output :exports both
+cp -rfv /home/joel/CityWeather/weather-site/content/images/*.png /home/joel/CityWeather/weather-site/public/images/
+#+end_src
+
+#+RESULTS:
+: '/home/joel/CityWeather/weather-site/content/images/humedad_vs_tiempo.png' -> '/home/joel/CityWeather/weather-site/public/images/humedad_vs_tiempo.png'
+: '/home/joel/CityWeather/weather-site/content/images/temperature.png' -> '/home/joel/CityWeather/weather-site/public/images/temperature.png'
+
+* Referencias
+- [[https://emacs.stackexchange.com/questions/28715/get-pandas-data-frame-as-a-table-in-org-babel][Presentar DataFrame como tabla en Emacs Org]]
+- [[https://orgmode.org/worg/org-contrib/babel/languages/ob-doc-python.html][Python Source Code Blocks in Org Mode]]
+- [[https://systemcrafters.net/publishing-websites-with-org-mode/building-the-site/][Construir tu sitio web con Org Mode]]
+- [[https://www.youtube.com/watch?v=AfkrzFodoNw][Vídeo: Build Your Website with Org Mode]]
+
